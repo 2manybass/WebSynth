@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Arpeggiator</title>
+		<style>
+			.slider input{
+				width:50%;
+				float:right;
+			}
+		</style>
+		<script src="keys.js">
+		</script>
+		<script>
+		var context=new AudioContext();
+		var noteStack=new Array();
+		var whichNote=0;
+		var arp;
+			function press(event){
+				var note=kvalues[event.key.toUpperCase()];
+				if(note){
+					noteStack.push(note);
+				}
+				if(arp==null){
+					arp=setInterval(nextNote, 100);
+					setTimeout(function(){osc.start();}, 200);
+				}
+				if(event.keyCode==8){
+					noteStack.pop();
+				}else if(event.keyCode==46){
+					noteStack.shift();
+				}
+			}
+			
+			var osc=context.createOscillator();
+			osc.type="square";
+			var gain=context.createGain();
+			osc.connect(gain);
+			gain.gain.setValueAtTime(0.2, context.currentTime);
+			gain.connect(context.destination);
+/*
+			var key=event.key.toUpperCase();
+			var pitch=kvalues[key];
+			if(pitch){ //if the pitch is recognized as a valid key
+*/
+			function colorOf(noteNum){
+				var r=Math.floor(noteNum%5*255/5);
+				var g=Math.floor(noteNum%7*255/7);
+				var b=Math.floor(noteNum%11*255/11);
+				return "rgb("+r+", "+g+", "+b+")";
+			}
+			function nextNote(){
+				if(noteStack.length>0){
+					whichNote++;
+					whichNote%=noteStack.length;
+					var pitch=noteStack[whichNote];
+					osc.frequency.setValueAtTime(440*Math.pow(2, (pitch-69)/12), context.currentTime);
+					var canvas=document.getElementById("canvas");
+					var ctx=canvas.getContext("2d");
+					ctx.fillStyle="#000000";
+					ctx.fillRect(0, 0, canvas.width, canvas.height);
+					var scale=canvas.width/noteStack.length;
+					for(var i=0; i<noteStack.length; i++){
+						var color=colorOf(noteStack[i]);
+						ctx.fillStyle=color;
+						if(whichNote==i){
+							ctx.fillRect(i*scale, 0, scale, canvas.height);						
+						}else{
+//						console.log(noteStack[i]);
+							ctx.fillRect(i*scale, (72-noteStack[i])*20, scale, 20);
+						}
+					}
+					
+				}
+				newWave();
+			}
+			function newWave(){
+				var real=new Float32Array(32);
+				var imag=new Float32Array(32);
+				var fund=document.getElementById("param1").value/100;
+				var odd=document.getElementById("param2").value/100;
+				var oct=document.getElementById("param3").value/100;
+				for(var i=1; i<32; i++){
+					if(i==1){
+						real[i]=fund;
+					}else{
+						if(i%2==0){ //if it's even
+							real[i]=oct/i;
+						}else{
+							real[i]=odd/i;
+						}
+					}
+				}
+				osc.setPeriodicWave(context.createPeriodicWave(real, imag));
+			}
+			window.onload=function(){
+				var canvas=document.getElementById("canvas");
+				canvas.width=window.innerWidth;
+				canvas.height=500;
+				var ctx=canvas.getContext("2d");
+				ctx.fillStyle="#000000";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+			}
+		</script>
+	</head>
+	<body onkeydown="press(event)">
+		<div class="slider">Fundamental: <input type="range" id="param1" value="100" min="0" max="100" /></div><div class="slider">Odd: <input type="range" id="param2" value="0" min="0" max="100" /></div><div class="slider">Even: <input type="range" id="param3" value="0" min="0" max="100" /></div>
+		<canvas id="canvas"></canvas>
+	</body>
+</html>
